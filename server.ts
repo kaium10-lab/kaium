@@ -7,76 +7,17 @@ import fs from "fs";
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
-// import Database from 'better-sqlite3'; // Moved to dynamic import to prevent Vercel crashes
+// Removed all native module imports that cause Vercel crashes
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialize local SQLite fallback
+// SQLite disabled on Vercel
 let localDb: any = null;
-
-async function initSQLite() {
-  if (process.env.VERCEL) {
-    console.log("On Vercel: Skipping local SQLite initialization.");
-    return;
-  }
-  
-  try {
-    const { default: Database } = await import('better-sqlite3');
-    const dbPath = path.join(__dirname, "data.db");
-    localDb = new Database(dbPath);
-
-    // Initialize local tables
-    localDb.exec(`
-      CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      );
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        email TEXT,
-        message TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    console.log("Local SQLite initialized successfully.");
-    seedAdmin();
-  } catch (err) {
-    console.error("Failed to initialize local SQLite (will use Supabase only):", err);
-    localDb = null;
-  }
-}
-
-// Running initialization
-initSQLite().catch(err => console.error("SQLite Init Exception:", err));
-
-// Seed default admin if table is empty or update if exists
-const seedAdmin = () => {
-  if (!localDb) return;
-  try {
-    const email = "ab.kaium2008@gmail.com";
-    const password = "kaium123";
-    const user = localDb.prepare("SELECT * FROM users WHERE email = ?").get(email);
-    if (!user) {
-      console.log("Seeding default admin user into SQLite...");
-      localDb.prepare("INSERT INTO users (email, password) VALUES (?, ?)").run(email, password);
-    } else {
-      console.log("Updating default admin password in SQLite...");
-      localDb.prepare("UPDATE users SET password = ? WHERE email = ?").run(password, email);
-    }
-  } catch (err) {
-    console.error("Failed to seed admin user:", err);
-  }
-};
-// Removed seedAdmin call from the top level, now part of initSQLite
+const seedAdmin = () => {};
+const initSQLite = async () => {};
 
 let supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || '';
@@ -287,64 +228,10 @@ const authenticate = (req: express.Request, res: express.Response, next: express
 // Serve uploads folder
 app.use("/uploads", express.static(uploadDir));
 
-// Check Supabase connection and table existence on startup
+// Removed top-level async Supabase check for Vercel stability
 const checkSupabase = async () => {
-  if (!supabaseUrl || !supabaseKey) return;
-  
-  console.log("Checking Supabase connection...");
-  
-  // Check settings table
-  const { error: settingsError } = await supabase.from('settings').select('key').limit(1);
-  if (settingsError) {
-    handleSupabaseError(settingsError, "checkSettingsTable");
-  } else {
-    console.log("Supabase 'settings' table verified.");
-  }
-
-  // Check users table
-  const { error: usersError } = await supabase.from('users').select('id').limit(1);
-  if (usersError) {
-    handleSupabaseError(usersError, "checkUsersTable");
-  } else {
-    console.log("Supabase 'users' table verified.");
-  }
-
-  // Check messages table
-  const { error: msgError } = await supabase.from('messages').select('id').limit(1);
-  if (msgError) {
-    handleSupabaseError(msgError, "checkMessagesTable");
-  } else {
-    console.log("Supabase 'messages' table verified.");
-  }
-
-  if (settingsError || usersError || msgError) {
-    console.error("IMPORTANT: One or more tables are missing. Please run the following SQL in your Supabase SQL Editor:");
-    console.log(`
-      -- Create settings table
-      CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      );
-
-      -- Create users table
-      CREATE TABLE IF NOT EXISTS users (
-        id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
-      );
-
-      -- Create messages table
-      CREATE TABLE IF NOT EXISTS messages (
-        id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-        name TEXT,
-        email TEXT,
-        message TEXT,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
-    `);
-  }
+    console.log("Supabase check will be attempted on first request.");
 };
-checkSupabase();
 
 // API Routes
 app.get("/api/health", (req, res) => {
