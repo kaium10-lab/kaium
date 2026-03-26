@@ -1,5 +1,5 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
+// import { createServer as createViteServer } from "vite"; // Moved to dynamic import
 import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
@@ -233,9 +233,13 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Configure Multer for file uploads
-const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+const uploadDir = process.env.VERCEL ? "/tmp" : path.join(__dirname, "uploads");
+if (!process.env.VERCEL && !fs.existsSync(uploadDir)) {
+  try {
+    fs.mkdirSync(uploadDir);
+  } catch (err) {
+    console.warn("Failed to create uploadDir:", err);
+  }
 }
 
 const storage = multer.diskStorage({
@@ -723,11 +727,16 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } catch (err) {
+      console.error("Failed to load Vite server:", err);
+    }
   } else if (!process.env.VERCEL) {
     app.use(express.static(path.join(__dirname, "dist")));
     app.get("*", (req, res) => {
