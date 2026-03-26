@@ -1,20 +1,117 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Abdul Kaium — Portfolio Website
 
-# Run and deploy your AI Studio app
+A modern, full-stack personal portfolio website built with React, Express, and Supabase. Features a dynamic admin panel for real-time content management, contact form with message inbox, and a sleek dark-themed design with smooth animations.
 
-This contains everything you need to run your app locally.
+## ✨ Features
 
-View your app in AI Studio: https://ai.studio/apps/d605dbb7-0d43-4079-bfd2-1ea188ccf1e5
+- **Dynamic Portfolio** — Hero, About, Skills, Projects, Contact sections with smooth scroll animations
+- **Admin Panel** — Secured login with JWT auth, brute-force protection, and full content management
+- **Supabase Integration** — Cloud database with automatic local SQLite fallback
+- **Contact Form** — Visitors can send messages, viewable from the admin inbox
+- **Image Uploads** — Upload profile photos, logos, and project images directly from the admin panel
+- **Responsive Design** — Fully optimized for desktop, tablet, and mobile devices
+- **Typing Animation** — Customizable rotating text animation on the hero section
 
-## Run Locally
+## 🛠️ Tech Stack
 
-**Prerequisites:**  Node.js
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React, TypeScript, Tailwind CSS, Motion (Framer Motion) |
+| Backend | Express.js, Node.js |
+| Database | Supabase (PostgreSQL) + SQLite fallback |
+| Auth | JWT (JSON Web Tokens) |
+| Icons | Lucide React |
+| Build Tool | Vite |
+| Deployment | Vercel-ready |
 
+## 🚀 Getting Started
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Prerequisites
+- Node.js (v18+)
+- Supabase account (optional — works with local SQLite fallback)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/kaium10-lab/kaium.git
+   cd kaium
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env` file (see `.env.example`):
+   ```env
+   SUPABASE_URL=your_supabase_project_url
+   SUPABASE_KEY=your_supabase_key
+   JWT_SECRET=your_jwt_secret
+   ```
+
+4. Run the dev server:
+   ```bash
+   npm run dev
+   ```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 🗄️ Database Setup (Supabase)
+
+Run the following SQL in your Supabase SQL Editor:
+
+```sql
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  name TEXT,
+  email TEXT,
+  message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+## 📁 Project Structure
+
+```
+├── server.ts          # Express backend with API routes
+├── src/
+│   ├── App.tsx        # Main application component
+│   ├── main.tsx       # Entry point
+│   ├── index.css      # Global styles
+│   ├── types.ts       # TypeScript interfaces
+│   └── components/    # React components
+│       ├── AdminPanel.tsx
+│       ├── Hero.tsx
+│       ├── About.tsx
+│       ├── Skills.tsx
+│       ├── Projects.tsx
+│       └── Contact.tsx
+├── .env.example       # Environment variables template
+├── vite.config.ts     # Vite configuration
+├── vercel.json        # Vercel deployment config
+└── package.json
+```
+
+## 🔐 Admin Access
+
+Navigate to the admin panel via the shield icon and login with your configured credentials.
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+---
+
+**Built with ❤️ by [Abdul Kaium](https://github.com/kaium10-lab)**
