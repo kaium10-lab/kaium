@@ -7,7 +7,7 @@ import fs from "fs";
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
-import Database from 'better-sqlite3';
+// import Database from 'better-sqlite3'; // Moved to dynamic import to prevent Vercel crashes
 
 dotenv.config();
 
@@ -16,33 +16,47 @@ const __dirname = path.dirname(__filename);
 
 // Initialize local SQLite fallback
 let localDb: any = null;
-try {
-  const dbPath = process.env.VERCEL ? path.join("/tmp", "data.db") : path.join(__dirname, "data.db");
-  localDb = new Database(dbPath);
 
-  // Initialize local tables
-  localDb.exec(`
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT
-    );
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT,
-      email TEXT,
-      message TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-} catch (err) {
-  console.error("Failed to initialize local SQLite:", err);
-  localDb = null;
+async function initSQLite() {
+  if (process.env.VERCEL) {
+    console.log("On Vercel: Skipping local SQLite initialization.");
+    return;
+  }
+  
+  try {
+    const { default: Database } = await import('better-sqlite3');
+    const dbPath = path.join(__dirname, "data.db");
+    localDb = new Database(dbPath);
+
+    // Initialize local tables
+    localDb.exec(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        email TEXT,
+        message TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log("Local SQLite initialized successfully.");
+    seedAdmin();
+  } catch (err) {
+    console.error("Failed to initialize local SQLite (will use Supabase only):", err);
+    localDb = null;
+  }
 }
+
+// Running initialization
+initSQLite().catch(err => console.error("SQLite Init Exception:", err));
 
 // Seed default admin if table is empty or update if exists
 const seedAdmin = () => {
@@ -62,7 +76,7 @@ const seedAdmin = () => {
     console.error("Failed to seed admin user:", err);
   }
 };
-seedAdmin();
+// Removed seedAdmin call from the top level, now part of initSQLite
 
 let supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || '';
@@ -329,6 +343,15 @@ const checkSupabase = async () => {
 checkSupabase();
 
 // API Routes
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    vercel: !!process.env.VERCEL,
+    supabase: !!(supabaseUrl && supabaseKey),
+    timestamp: new Date().toISOString() 
+  });
+});
+
 app.get("/api/test", (req, res) => {
   res.json({ success: true, message: "API is working", timestamp: new Date().toISOString() });
 });
