@@ -15,31 +15,38 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize local SQLite fallback
-const dbPath = process.env.VERCEL ? path.join("/tmp", "data.db") : path.join(__dirname, "data.db");
-const localDb = new Database(dbPath);
+let localDb: any = null;
+try {
+  const dbPath = process.env.VERCEL ? path.join("/tmp", "data.db") : path.join(__dirname, "data.db");
+  localDb = new Database(dbPath);
 
-// Initialize local tables
-localDb.exec(`
-  CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT
-  );
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    email TEXT,
-    message TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
-  );
-`);
+  // Initialize local tables
+  localDb.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT,
+      email TEXT,
+      message TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+} catch (err) {
+  console.error("Failed to initialize local SQLite:", err);
+  localDb = null;
+}
 
 // Seed default admin if table is empty or update if exists
 const seedAdmin = () => {
+  if (!localDb) return;
   try {
     const email = "ab.kaium2008@gmail.com";
     const password = "kaium123";
@@ -351,16 +358,18 @@ app.get("/api/data", async (req, res) => {
       }
 
       // Fallback to local SQLite
-      console.log("Falling back to local SQLite for portfolio data...");
-      const localRow = localDb.prepare("SELECT value FROM settings WHERE key = ?").get('portfolio_data') as any;
-      if (localRow && localRow.value) {
-        try {
-          const data = JSON.parse(localRow.value);
-          if (!data.security) data.security = defaultData.security;
-          data._storage = 'local';
-          return res.json(data);
-        } catch (parseErr) {
-          console.error("JSON parse error for local SQLite data:", parseErr);
+      if (localDb) {
+        console.log("Falling back to local SQLite for portfolio data...");
+        const localRow = localDb.prepare("SELECT value FROM settings WHERE key = ?").get('portfolio_data') as any;
+        if (localRow && localRow.value) {
+          try {
+            const data = JSON.parse(localRow.value);
+            if (!data.security) data.security = defaultData.security;
+            data._storage = 'local';
+            return res.json(data);
+          } catch (parseErr) {
+            console.error("JSON parse error for local SQLite data:", parseErr);
+          }
         }
       }
 
@@ -381,11 +390,13 @@ app.get("/api/data", async (req, res) => {
     };
 
     // Always save to local SQLite first as a reliable cache
-    try {
-      localDb.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(payload.key, payload.value);
-      console.log("Portfolio data cached to local SQLite.");
-    } catch (localErr) {
-      console.error("Failed to save to local SQLite:", localErr);
+    if (localDb) {
+      try {
+        localDb.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(payload.key, payload.value);
+        console.log("Portfolio data cached to local SQLite.");
+      } catch (localErr) {
+        console.error("Failed to save to local SQLite:", localErr);
+      }
     }
 
     console.log("Attempting to save portfolio data to Supabase...");
@@ -485,12 +496,14 @@ app.get("/api/data", async (req, res) => {
           }
           
           // Fallback to local SQLite if Supabase failed or user not found
-          console.log("Checking local SQLite for login...");
-          const localUser = localDb.prepare("SELECT * FROM users WHERE email = ? AND password = ?").get(email, password) as any;
-          if (localUser) {
-            console.log("Local SQLite login success for:", email);
-            loginSuccess = true;
-            userEmail = localUser.email;
+          if (localDb) {
+            console.log("Checking local SQLite for login...");
+            const localUser = localDb.prepare("SELECT * FROM users WHERE email = ? AND password = ?").get(email, password) as any;
+            if (localUser) {
+              console.log("Local SQLite login success for:", email);
+              loginSuccess = true;
+              userEmail = localUser.email;
+            }
           }
         }
       }
@@ -569,11 +582,13 @@ app.get("/api/data", async (req, res) => {
     const createdAt = new Date().toISOString();
 
     // Always save to local SQLite first
-    try {
-      localDb.prepare("INSERT INTO messages (name, email, message, created_at) VALUES (?, ?, ?, ?)").run(name, email, message, createdAt);
-      console.log("Contact message cached to local SQLite.");
-    } catch (localErr) {
-      console.error("Failed to save contact message to local SQLite:", localErr);
+    if (localDb) {
+      try {
+        localDb.prepare("INSERT INTO messages (name, email, message, created_at) VALUES (?, ?, ?, ?)").run(name, email, message, createdAt);
+        console.log("Contact message cached to local SQLite.");
+      } catch (localErr) {
+        console.error("Failed to save contact message to local SQLite:", localErr);
+      }
     }
 
     try {
@@ -610,25 +625,29 @@ app.get("/api/data", async (req, res) => {
       }
 
       // Merge with local SQLite messages
-      try {
-        const localMessages = localDb.prepare("SELECT * FROM messages ORDER BY created_at DESC").all() as any[];
-        
-        // Simple merge: add local messages that aren't in Supabase
-        const combined = [...allMessages, ...localMessages];
-        
-        // Sort by date descending
-        combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        
-        // Remove duplicates (very basic check)
-        const unique = combined.filter((msg, index, self) =>
-          index === self.findIndex((m) => (
-            m.email === msg.email && m.message === msg.message && m.created_at === msg.created_at
-          ))
-        );
+      if (localDb) {
+        try {
+          const localMessages = localDb.prepare("SELECT * FROM messages ORDER BY created_at DESC").all() as any[];
+          
+          // Simple merge: add local messages that aren't in Supabase
+          const combined = [...allMessages, ...localMessages];
+          
+          // Sort by date descending
+          combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          
+          // Remove duplicates (very basic check)
+          const unique = combined.filter((msg, index, self) =>
+            index === self.findIndex((m) => (
+              m.email === msg.email && m.message === msg.message && m.created_at === msg.created_at
+            ))
+          );
 
-        return res.json(unique);
-      } catch (localErr) {
-        console.error("Failed to fetch local messages:", localErr);
+          return res.json(unique);
+        } catch (localErr) {
+          console.error("Failed to fetch local messages:", localErr);
+          return res.json(allMessages);
+        }
+      } else {
         return res.json(allMessages);
       }
     } catch (err: any) {
