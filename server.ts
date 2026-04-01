@@ -14,10 +14,45 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// SQLite disabled on Vercel
+// SQLite disabled on Vercel, but enabled locally
 let localDb: any = null;
-const seedAdmin = () => {};
-const initSQLite = async () => {};
+
+const initSQLite = async () => {
+  if (process.env.VERCEL) {
+    console.log("Running on Vercel: SQLite storage disabled.");
+    return;
+  }
+  
+  try {
+    const { default: Database } = await import('better-sqlite3');
+    localDb = new Database("data.db");
+    console.log("Local SQLite database initialized.");
+    
+    // Ensure tables exist
+    localDb.exec(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE,
+        password TEXT
+      );
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        email TEXT,
+        message TEXT,
+        created_at TEXT
+      );
+    `);
+  } catch (err) {
+    console.warn("Failed to initialize local SQLite:", err);
+  }
+};
+
+initSQLite();
 
 let supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || '';
@@ -331,7 +366,16 @@ app.get("/api/data", async (req, res) => {
           customMessage = `Supabase error: ${error.message}. Data was saved LOCALLY only.`;
         }
 
-        // Return success since it was saved locally, but include the warning
+        // Return error if no local persistence
+        if (!localDb) {
+           return res.status(500).json({ 
+             success: false, 
+             message: `Failed to save to Supabase and no local database available. Error: ${customMessage}`,
+             error: error
+           });
+        }
+
+        // Return success with warning if only local save worked
         return res.json({ 
           success: true, 
           warning: customMessage,
