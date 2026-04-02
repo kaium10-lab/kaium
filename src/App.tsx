@@ -324,7 +324,17 @@ export default function App() {
       
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        return { success: false, message: "Server returned non-JSON response. Please check if the server is starting up." };
+        const text = await res.text();
+        console.error("Non-JSON response body snippet:", text.substring(0, 500));
+        
+        let customMsg = `Server returned non-JSON response (${res.status}).`;
+        if (res.status === 413) {
+          customMsg = "The data you are trying to save is too large for the server. Please try reducing the number of high-resolution images.";
+        } else if (res.status === 504) {
+          customMsg = "The server timed out while saving. This can happen with very large datasets or slow connections.";
+        }
+        
+        return { success: false, message: customMsg };
       }
       
       const result = await res.json();

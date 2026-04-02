@@ -630,10 +630,48 @@ app.get("/api/data", async (req, res) => {
     }
   });
 
-  app.post("/api/upload", authenticate, upload.single("image"), (req, res) => {
+  app.post("/api/upload", authenticate, upload.single("image"), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, message: "No file uploaded" });
     }
+
+    // Try to upload to Supabase Storage for persistence if configured
+    if (supabaseUrl && supabaseKey && !supabaseUrl.includes('mock')) {
+      try {
+        const fileContent = fs.readFileSync(req.file.path);
+        const fileExt = path.extname(req.file.originalname);
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}${fileExt}`;
+        const bucketName = 'uploads';
+
+        const { data, error } = await supabase.storage
+          .from(bucketName)
+          .upload(fileName, fileContent, {
+            contentType: req.file.mimetype,
+            upsert: false
+          });
+
+        if (!error && data) {
+          const { data: { publicUrl } } = supabase.storage
+            .from(bucketName)
+            .getPublicUrl(fileName);
+          
+          // Clean up the local temporary file
+          try { fs.unlinkSync(req.file.path); } catch (e) {}
+          
+          console.log("File uploaded to Supabase Storage:", publicUrl);
+          return res.json({ success: true, url: publicUrl });
+        } else {
+          console.warn("Supabase Storage upload failed (falling back to local):", error?.message);
+          if (error?.message?.includes('bucket not found')) {
+            console.warn("HINT: Please create a public bucket named 'uploads' in your Supabase project.");
+          }
+        }
+      } catch (err) {
+        console.error("Supabase Storage exception:", err);
+      }
+    }
+
+    // Fallback if Supabase is not available or failed
     const imageUrl = `/uploads/${req.file.filename}`;
     res.json({ success: true, url: imageUrl });
   });

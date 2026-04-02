@@ -422,29 +422,48 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose })
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Limit file size to 2MB to prevent database bloat
-    if (file.size > 2 * 1024 * 1024) {
-      setNotification({ message: 'File is too large. Please upload an image smaller than 2MB.', type: 'error' });
+    // Limit file size to 5MB (Vercel limit is 4.5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setNotification({ message: 'File is too large. Please upload an image smaller than 5MB.', type: 'error' });
       return;
     }
 
     setUploading(true);
     
     try {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        callback(base64String);
-        setUploading(false);
-      };
-      reader.onerror = () => {
-        setNotification({ message: 'Failed to read file', type: 'error' });
-        setUploading(false);
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      console.warn(err);
-      setNotification({ message: 'Upload failed. Please try again.', type: 'error' });
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: getAuthHeader(),
+        // Note: Do NOT set Content-Type header when using FormData; fetch handles it with boundary
+        body: formData
+      });
+
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text();
+        console.error("Non-JSON upload response:", text.substring(0, 100));
+        throw new Error("Server returned non-JSON response during upload.");
+      }
+
+      const result = await res.json();
+      if (result.success && result.url) {
+        callback(result.url);
+        setNotification({ message: 'Image uploaded successfully', type: 'success' });
+      } else {
+        throw new Error(result.message || 'Upload failed');
+      }
+    } catch (err: any) {
+      console.warn("Upload error:", err);
+      setNotification({ message: `Upload failed: ${err.message}`, type: 'error' });
+    } finally {
       setUploading(false);
     }
   };
