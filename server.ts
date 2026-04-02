@@ -122,6 +122,10 @@ const createMockSupabase = (errorMsg = "Supabase not configured") => {
 if (!supabaseUrl || !supabaseKey) {
   console.warn("WARNING: Supabase URL or Key is missing. Database features will not work.");
   supabase = createMockSupabase();
+} else if (!supabaseKey.startsWith('eyJ')) {
+  console.error("CRITICAL ERROR: Your SUPABASE_KEY does not look like a valid public/secret key (it should be a very long JWT string starting with 'eyJ').");
+  console.error("Please check your Supabase Dashboard -> Settings -> API for the 'anon' public key.");
+  supabase = createMockSupabase("Invalid SUPABASE_KEY format");
 } else {
   try {
     supabase = createClient(supabaseUrl, supabaseKey);

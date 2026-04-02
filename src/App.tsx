@@ -303,9 +303,55 @@ export default function App() {
     }
   };
 
+  const syncBase64Images = async (data: any, token: string | null): Promise<any> => {
+    if (!data) return data;
+    
+    if (typeof data === 'string' && data.startsWith('data:image/')) {
+      try {
+        const res = await fetch(data);
+        const blob = await res.blob();
+        const file = new File([blob], `sync-${Date.now()}.png`, { type: blob.type });
+        
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+          body: formData
+        });
+        
+        if (uploadRes.ok) {
+          const result = await uploadRes.json();
+          if (result.success && result.url) return result.url;
+        }
+      } catch (err) {
+        console.error("Failed to sync base64 image:", err);
+      }
+      return data;
+    }
+    
+    if (Array.isArray(data)) {
+      return Promise.all(data.map(item => syncBase64Images(item, token)));
+    }
+    
+    if (typeof data === 'object' && data !== null) {
+      const synced: any = {};
+      for (const [key, value] of Object.entries(data)) {
+        synced[key] = await syncBase64Images(value, token);
+      }
+      return synced;
+    }
+    
+    return data;
+  };
+
   const handleSaveData = async (newData: PortfolioData): Promise<{ success: boolean; message?: string }> => {
     try {
       const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+      
+      // Pre-save sync to convert any remaining base64 images to permanent URLs
+      const syncedData = await syncBase64Images(newData, token);
       
       const res = await fetch('/api/data', {
         method: 'POST',
@@ -313,7 +359,7 @@ export default function App() {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        body: JSON.stringify(newData)
+        body: JSON.stringify(syncedData)
       });
       
       if (res.status === 401) {
