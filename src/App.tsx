@@ -116,7 +116,15 @@ const Navbar = ({ logo }: { logo?: string }) => {
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         <a href="#" className="text-2xl font-bold tracking-tighter text-white flex items-center gap-2">
           {logo ? (
-            <img src={logo} alt="Logo" className="h-8 w-auto object-contain" referrerPolicy="no-referrer" />
+            <img 
+              src={logo} 
+              alt="Logo" 
+              className="h-8 w-auto object-contain" 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none'; // Hide logo if broken
+              }}
+            />
           ) : (
             <>PORTFOLIO<span className="text-emerald-500">.</span></>
           )}
@@ -448,7 +456,9 @@ export default function App() {
                 src={data.hero.heroImage} 
                 alt="Hero Background" 
                 className="w-full h-full object-cover opacity-20"
-                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).parentElement?.remove(); // Remove background if broken
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/50 via-zinc-950 to-zinc-950" />
             </>
@@ -520,7 +530,10 @@ export default function App() {
                   src={data.about.image} 
                   alt={data.hero.name} 
                   className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700"
-                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(data.hero.name) + '&background=10b981&color=fff&size=512';
+                  }}
                 />
               </div>
               <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-emerald-500 rounded-2xl -z-10" />
@@ -608,7 +621,10 @@ export default function App() {
                     src={project.img} 
                     alt={project.title} 
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop';
+                    }}
                   />
                 </div>
                 <div className="p-6">
