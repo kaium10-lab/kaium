@@ -13,8 +13,12 @@ import {
   Globe, 
   Send,
   Lock,
-  Database,
+  User,
   Cpu,
+  Shield,
+  Database,
+  CheckCircle2,
+  AlertCircle,
   Layers,
   Smartphone,
   Server,
@@ -26,6 +30,8 @@ import {
   Share2,
   MapPin
 } from 'lucide-react';
+import { PortfolioData } from './types';
+import { AdminPanel } from './components/AdminPanel';
 
 const SocialIcon = ({ name, url, size = 20 }: { name: string, url?: string, size?: number }) => {
   const normalizedName = name.toLowerCase().trim();
@@ -61,8 +67,6 @@ const SkillIcon = ({ name }: { name: string }) => {
   };
   return icons[name] || <Code2 className="text-emerald-500" />;
 };
-import { PortfolioData } from './types';
-import { AdminPanel } from './components/AdminPanel';
 
 const INITIAL_DATA: PortfolioData = {
   hero: {
@@ -258,6 +262,14 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [formStatus, setFormStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    let timeout = setTimeout(() => {
+      if (!data) setIsOffline(true);
+    }, 10000); // 10s timeout
+    return () => clearTimeout(timeout);
+  }, [data]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -303,8 +315,20 @@ export default function App() {
         setData(INITIAL_DATA);
         return;
       }
-      const json = await res.json();
-      setData(json);
+      const jsonData = await res.json();
+      
+      // Ensure all sections exist and are the correct type even if database only has some (prevent crashes)
+      const mergedData: PortfolioData = {
+        ...INITIAL_DATA,
+        ...jsonData,
+        hero: { ...INITIAL_DATA.hero, ...(jsonData?.hero || {}) },
+        about: { ...INITIAL_DATA.about, ...(jsonData?.about || {}) },
+        socials: Array.isArray(jsonData?.socials) ? jsonData.socials : INITIAL_DATA.socials,
+        skills: Array.isArray(jsonData?.skills) ? jsonData.skills : (jsonData?.skills ? Object.values(jsonData.skills) : INITIAL_DATA.skills),
+        projects: Array.isArray(jsonData?.projects) ? jsonData.projects : (jsonData?.projects ? Object.values(jsonData.projects) : INITIAL_DATA.projects),
+      };
+      
+      setData(mergedData);
     } catch (err) {
       console.warn("Failed to fetch data from server. Using default data.", err);
       setData(INITIAL_DATA);
@@ -434,9 +458,33 @@ export default function App() {
     }
   };
 
+  if (isOffline && !data) return (
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
+      <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
+        <Cpu className="text-red-500 animate-pulse" size={32} />
+      </div>
+      <h1 className="text-2xl font-bold text-white mb-2">Backend Server Offline</h1>
+      <p className="text-zinc-400 max-w-sm mb-8">
+        Your portfolio cannot connect to the database because the server is not running on your computer.
+      </p>
+      <div className="space-y-4 w-full max-w-xs">
+        <div className="p-4 bg-zinc-900 rounded-xl border border-white/5 text-left text-xs font-mono text-emerald-500">
+          $ npm run dev
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="w-full py-3 bg-emerald-500 text-zinc-950 font-bold rounded-xl hover:bg-emerald-600 transition-all"
+        >
+          Check Again
+        </button>
+      </div>
+    </div>
+  );
+
   if (!data) return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-      <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center">
+      <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4" />
+      <p className="text-zinc-500 text-sm animate-pulse">Connecting to Database...</p>
     </div>
   );
 
@@ -525,40 +573,51 @@ export default function App() {
               viewport={{ once: true }}
               className="relative"
             >
-              <div className="aspect-square rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-                <img 
-                  src={data.about.image} 
-                  alt={data.hero.name} 
-                  className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(data.hero.name) + '&background=10b981&color=fff&size=512';
-                  }}
-                />
+              <div className="relative z-10 w-full aspect-square rounded-2xl overflow-hidden bg-zinc-900 border border-white/5">
+                {data?.about?.image ? (
+                  <img 
+                    src={data.about.image} 
+                    alt={data?.hero?.name || "Profile"} 
+                    className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(data?.hero?.name || "Admin") + '&background=10b981&color=fff&size=512';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-zinc-800">
+                    <User size={64} />
+                  </div>
+                )}
               </div>
               <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-emerald-500 rounded-2xl -z-10" />
+              <div className="absolute -top-6 -left-6 w-32 h-32 border-2 border-emerald-500/20 rounded-2xl -z-10" />
             </motion.div>
 
-            <div>
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
               <SectionHeading 
                 title="About Me" 
-                subtitle={data.hero.title} 
+                subtitle={data?.hero?.title || ""} 
               />
               <div className="space-y-6 text-zinc-400 leading-relaxed">
-                <p>{data.about.bio1}</p>
-                <p>{data.about.bio2}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                <p>{data?.about?.bio1 || "Python Enthusiast and Cyber Security Learner."}</p>
+                <p>{data?.about?.bio2 || "Focused on building secure and efficient web applications."}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4">
                   <div>
                     <h4 className="text-white font-bold mb-2">Education</h4>
-                    <p>{data.about.experience}</p>
+                    <p className="text-zinc-500 text-sm">{data?.about?.experience || "Daffodil Polytechnic Institute"}</p>
                   </div>
                   <div>
                     <h4 className="text-white font-bold mb-2">Location</h4>
-                    <p>{data.about.location}</p>
+                    <p className="text-zinc-500 text-sm">{data?.about?.location || "Dhaka, Bangladesh"}</p>
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -572,7 +631,7 @@ export default function App() {
           />
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {data.skills.map((category, idx) => (
+            {(data?.skills || []).map((category, idx) => (
               <motion.div
                 key={category.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -586,7 +645,7 @@ export default function App() {
                 </div>
                 <h3 className="text-xl font-bold mb-4 text-white">{category.title}</h3>
                 <div className="flex flex-wrap gap-2">
-                  {category.skills.map(skill => (
+                  {(category?.skills || []).map(skill => (
                     <span key={skill} className="px-3 py-1 bg-white/5 rounded-full text-xs text-zinc-400 border border-white/5">
                       {skill}
                     </span>
@@ -606,21 +665,21 @@ export default function App() {
             subtitle="Practical applications of my learning journey." 
           />
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {data.projects.map((project, idx) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {(data?.projects || []).map((project, idx) => (
               <motion.div
                 key={project.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1 }}
-                className="group bg-zinc-900 rounded-3xl overflow-hidden border border-white/5 hover:border-emerald-500/30 transition-all"
+                className="group relative bg-zinc-900 rounded-3xl overflow-hidden border border-white/5 hover:border-emerald-500/30 transition-all"
               >
-                <div className="aspect-video overflow-hidden relative">
+                <div className="aspect-[16/10] overflow-hidden relative">
                   <img 
                     src={project.img} 
                     alt={project.title} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 font-sans"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop';
@@ -628,18 +687,11 @@ export default function App() {
                   />
                 </div>
                 <div className="p-6">
-                  <div className="flex gap-2 mb-4">
-                    {project.tags.map(tag => (
-                      <span key={tag} className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 px-2 py-1 bg-emerald-500/10 rounded">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
                   <h3 className="text-xl font-bold mb-2 text-white">{project.title}</h3>
-                  <p className="text-zinc-400 text-sm leading-relaxed mb-6">
-                    {project.desc}
+                  <p className="text-zinc-400 text-sm leading-relaxed mb-6 line-clamp-3">
+                    {project.desc || "A project built with passion and code."}
                   </p>
-                  <div className="mt-8">
+                  <div className="mt-auto">
                     {project.githubUrl ? (
                       <a 
                         href={project.githubUrl.startsWith('http') ? project.githubUrl : `https://${project.githubUrl}`} 
@@ -674,17 +726,17 @@ export default function App() {
                 subtitle="Feel free to reach out for collaborations or just a friendly hello." 
               />
               <div className="space-y-8 mt-12">
-                <a href={`mailto:${data.contact.email}`} className="flex items-start gap-6 group">
+                <a href={`mailto:${data?.contact?.email || ""}`} className="flex items-start gap-6 group">
                   <div className="p-4 bg-zinc-900 rounded-2xl border border-white/5 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-zinc-950 transition-all">
                     <Mail size={24} />
                   </div>
                   <div>
                     <h4 className="text-white font-bold mb-1">Email</h4>
-                    <p className="text-zinc-400 group-hover:text-emerald-500 transition-colors">{data.contact.email}</p>
+                    <p className="text-zinc-400 group-hover:text-emerald-500 transition-colors">{data?.contact?.email || "admin@kaium.com"}</p>
                   </div>
                 </a>
                 
-                {(data.socials || []).map((social) => (
+                {(data?.socials || []).map((social: any) => (
                   <a key={social.id} href={social.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-6 group">
                     <div className="p-4 bg-zinc-900 rounded-2xl border border-white/5 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-zinc-950 transition-all">
                       <SocialIcon name={social.icon} url={social.url} size={24} />
@@ -696,7 +748,7 @@ export default function App() {
                   </a>
                 ))}
 
-                {data.contact.addressLink ? (
+                {data?.contact?.addressLink ? (
                   <a 
                     href={data.contact.addressLink.startsWith('http') ? data.contact.addressLink : `https://${data.contact.addressLink}`} 
                     target="_blank" 
@@ -708,7 +760,9 @@ export default function App() {
                     </div>
                     <div>
                       <h4 className="text-white font-bold mb-1">Address</h4>
-                      <p className="text-zinc-400 group-hover:text-emerald-500 transition-colors">{data.contact.address}</p>
+                      <p className="text-zinc-400 group-hover:text-emerald-500 transition-colors">
+                        {data?.contact?.address || "Dhaka, Bangladesh"}
+                      </p>
                     </div>
                   </a>
                 ) : (
@@ -718,7 +772,7 @@ export default function App() {
                     </div>
                     <div>
                       <h4 className="text-white font-bold mb-1">Address</h4>
-                      <p className="text-zinc-400">{data.contact.address}</p>
+                      <p className="text-zinc-400">{data?.contact?.address || "Dhaka, Bangladesh"}</p>
                     </div>
                   </div>
                 )}
@@ -793,10 +847,10 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="text-center md:text-left">
             <a href="#" className="text-xl font-bold tracking-tighter text-white mb-2 block">
-              {data.hero.logo ? (
+              {data?.hero?.logo ? (
                 <img src={data.hero.logo} alt="Logo" className="h-6 w-auto object-contain inline-block mr-2" referrerPolicy="no-referrer" />
               ) : (
-                <>{data.hero.name.toUpperCase()}<span className="text-emerald-500">.</span></>
+                <>{(data?.hero?.name || "Admin").toUpperCase()}<span className="text-emerald-500">.</span></>
               )}
             </a>
             <p className="text-zinc-500 text-sm">

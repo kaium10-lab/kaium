@@ -37,8 +37,9 @@ USING (true);
 
 -- Allow updates for service_role or authenticate via API
 -- (For simplicity, we'll allow all operations if the API key is present)
-CREATE POLICY "Allow all on settings for service_role" 
-ON settings ALL 
+-- Allow all operations for now to ensure connectivity
+CREATE POLICY "Allow all on settings" 
+ON settings FOR ALL 
 USING (true) 
 WITH CHECK (true);
 
@@ -54,7 +55,7 @@ INSERT INTO users (email, password)
 VALUES ('admin@kaium.com', 'kaium123')
 ON CONFLICT (email) DO NOTHING;
 
--- 8. Seed Default Portfolio Data
+-- 8. Seed Default Portfolio Data (Complete Template)
 INSERT INTO settings (key, value)
 VALUES ('portfolio_data', '{
   "hero": {
@@ -62,6 +63,44 @@ VALUES ('portfolio_data', '{
     "title": "Computer Science Student",
     "typingTexts": ["Python Enthusiast", "Cyber Security Learner", "Diploma Student"],
     "description": "Currently studying Computer Science & Technology at Daffodil Polytechnic Institute."
-  }
+  },
+  "about": {
+    "title": "Crafting Digital Reality with Security In Mind",
+    "description": "I am a Computer Science student with a passion for web development and cybersecurity. I love building things that are not only beautiful but also robust and secure.",
+    "bio1": "Based in Dhaka, Bangladesh, I am constantly exploring new technologies and security protocols.",
+    "bio2": "My goal is to create seamless user experiences while ensuring that the underlying architecture is bulletproof.",
+    "experience": "Daffodil Polytechnic Institute",
+    "location": "Dhaka, Bangladesh",
+    "image": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=2574&auto=format&fit=crop"
+  },
+  "skills": [
+    {
+      "id": "1",
+      "title": "Frontend",
+      "icon": "Palette",
+      "skills": ["React", "TypeScript", "Tailwind CSS", "Framer Motion"]
+    },
+    {
+      "id": "2",
+      "title": "Backend",
+      "icon": "Code2",
+      "skills": ["Node.js", "Express", "PostgreSQL", "SQLite"]
+    }
+  ],
+  "projects": [
+    {
+      "id": "1",
+      "title": "E-Commerce Security Audit",
+      "desc": "A comprehensive security audit of a modern e-commerce platform.",
+      "tags": ["Cybersecurity", "React", "Node.js"],
+      "img": "https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=2574&auto=format&fit=crop",
+      "githubUrl": "https://github.com/kaium10-lab"
+    }
+  ],
+  "socials": [
+    { "id": "1", "name": "GitHub", "url": "https://github.com/kaium10-lab", "icon": "Github" },
+    { "id": "2", "name": "LinkedIn", "url": "#", "icon": "Linkedin" },
+    { "id": "3", "name": "Email", "url": "mailto:admin@kaium.com", "icon": "Mail" }
+  ]
 }')
 ON CONFLICT (key) DO NOTHING;

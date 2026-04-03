@@ -1,7 +1,17 @@
 import express from "express";
 // import { createServer as createViteServer } from "vite"; // Moved to dynamic import
-import path from "path";
-import { fileURLToPath } from "url";
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// 🚀 Global Crash Prevention
+process.on('uncaughtException', (err) => {
+  console.error('\n🔴 CRITICAL UNCAUGHT EXCEPTION:', err.message);
+  console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('\n🔴 CRITICAL UNHANDLED REJECTION:', reason);
+});
 import multer from "multer";
 import fs from "fs";
 import { createClient } from '@supabase/supabase-js';
@@ -750,9 +760,27 @@ async function startServer() {
   }
 
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
+    // Use try-catch for listen to catch port errors
+    try {
+      const server = app.listen(PORT, "0.0.0.0", () => {
+        console.log(`\n🚀 SERVER STARTED SUCCESSFULLY!`);
+        console.log(`🌍 Local: http://localhost:${PORT}`);
+        console.log(`🔌 Listening on all interfaces (0.0.0.0)\n`);
+      });
+
+      server.on('error', (e: any) => {
+        if (e.code === 'EADDRINUSE') {
+          console.error(`\n❌ ERROR: Port ${PORT} is already in use by another app.`);
+          console.error(`💡 Try changing the PORT in your .env to 3001 or 3005.\n`);
+          process.exit(1);
+        } else {
+          console.error(`\n❌ SERVER ERROR:`, e.message);
+        }
+      });
+    } catch (err: any) {
+      console.error(`\n❌ FAILED TO START SERVER:`, err.message);
+      process.exit(1);
+    }
   }
 }
 
