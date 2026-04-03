@@ -273,13 +273,32 @@ const checkSupabase = async () => {
 };
 
 // API Routes
-app.get("/api/health", (req, res) => {
-  res.json({ 
-    status: "ok", 
+app.get("/api/health", async (req, res) => {
+  const diagnostics: any = {
+    status: "ok",
     vercel: !!process.env.VERCEL,
-    supabase: !!(supabaseUrl && supabaseKey),
-    timestamp: new Date().toISOString() 
-  });
+    supabaseConfigured: !!(supabaseUrl && supabaseKey),
+    timestamp: new Date().toISOString()
+  };
+
+  if (diagnostics.supabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('settings').select('key').limit(1);
+      if (error) {
+        diagnostics.supabaseError = error.message;
+        diagnostics.supabaseStatus = "Error Connecting";
+      } else {
+        diagnostics.supabaseStatus = "Connected (Cloud)";
+      }
+    } catch (e: any) {
+      diagnostics.supabaseStatus = "Exception Connecting";
+      diagnostics.supabaseError = e.message;
+    }
+  } else {
+    diagnostics.supabaseStatus = "Missing Credentials";
+  }
+
+  res.json(diagnostics);
 });
 
 app.get("/api/test", (req, res) => {

@@ -56,6 +56,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose })
   const [credError, setCredError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+  const [cloudInfo, setCloudInfo] = useState<{ status: string, error?: string, configured: boolean } | null>(null);
+
+  useEffect(() => {
+    const checkCloud = async () => {
+      try {
+        const res = await fetch('/api/health');
+        if (res.ok) {
+          const diagnostics = await res.json();
+          setCloudInfo({
+            status: diagnostics.supabaseStatus,
+            error: diagnostics.supabaseError,
+            configured: diagnostics.supabaseConfigured
+          });
+        }
+      } catch (err) {
+        setCloudInfo({ status: 'Local Mode', configured: false });
+      }
+    };
+    
+    checkCloud();
+    const interval = setInterval(checkCloud, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (notification) {
@@ -166,15 +189,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose })
     if (result.success) {
       setSaveStatus('success');
       if (result.message) {
-        setNotification({ message: result.message, type: 'success' });
+        // If message suggests local only, use a warning type
+        const isWarning = result.message.toLowerCase().includes('local') || result.message.toLowerCase().includes('supabase error');
+        setNotification({ 
+          message: result.message, 
+          type: isWarning ? 'error' : 'success' 
+        });
       }
       setTimeout(() => {
         setSaveStatus('idle');
         onClose();
-      }, 2000);
+      }, 3000);
     } else {
       setSaveStatus('error');
       setSaveError(result.message || 'Failed to save data');
+      setNotification({ message: result.message || 'Failed to save data', type: 'error' });
     }
   };
 
@@ -468,6 +497,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose })
     }
   };
 
+  const CloudStatusIndicator = () => {
+    if (!cloudInfo) return <div className="text-[10px] text-zinc-500 mt-1">Connecting...</div>;
+    
+    const isConnected = cloudInfo.status === "Connected (Cloud)";
+    const isError = cloudInfo.status.includes("Error") || cloudInfo.status.includes("Exception") || cloudInfo.status === "Missing Credentials";
+    
+    return (
+      <div className="group relative">
+        <div className="flex items-center gap-1.5 mt-1 cursor-help">
+          <div className={`w-2 h-2 rounded-full ${
+            isConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 
+            isError ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' :
+            'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+          }`} />
+          <span className={`text-[10px] uppercase tracking-wider font-bold ${
+            isConnected ? 'text-zinc-500' : isError ? 'text-red-500' : 'text-amber-500'
+          }`}>
+            {cloudInfo.status}
+          </span>
+        </div>
+        {cloudInfo.error && (
+          <div className="absolute left-0 top-full mt-2 w-64 p-3 bg-zinc-900 border border-red-500/20 rounded-xl text-[10px] text-red-400 z-50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-2xl">
+            <strong>Database Error:</strong> {cloudInfo.error}
+            {!cloudInfo.configured && <p className="mt-1 text-zinc-500">HINT: Check your Vercel/Local environment variables.</p>}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const ImageUploadField = ({ label, value, onChange }: { label: string, value: string, onChange: (url: string) => void }) => (
     <div className="space-y-2">
       <label className="text-sm text-zinc-400">{label}</label>
@@ -587,19 +646,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose })
         <div className="p-6 border-b border-white/10 flex justify-between items-center">
           <div className="flex flex-col">
             <h1 className="text-xl font-bold text-white">Admin Panel</h1>
-            {data._storage && (
-              <div className="flex items-center gap-1.5 mt-1">
-                <div className={`w-2 h-2 rounded-full ${
-                  data._storage === 'supabase' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 
-                  data._storage === 'local' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 
-                  'bg-zinc-500'
-                }`} />
-                <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-500">
-                  {data._storage === 'supabase' ? 'Cloud Sync' : 
-                   data._storage === 'local' ? 'Local Cache' : 'Default'}
-                </span>
-              </div>
-            )}
+            <CloudStatusIndicator />
           </div>
           <button onClick={handleClose} className="md:hidden text-zinc-500 hover:text-white">
             <X size={24} />
