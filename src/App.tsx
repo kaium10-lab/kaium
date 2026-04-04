@@ -338,10 +338,10 @@ export default function App() {
       
       <button 
         onClick={() => setIsAdminOpen(true)}
-        className="fixed bottom-6 right-6 p-4 bg-zinc-900/80 backdrop-blur-md border border-white/10 rounded-2xl text-zinc-500 hover:text-emerald-500 transition-all hover:scale-110 active:scale-95 group z-[100]"
+        className="fixed bottom-4 right-4 p-1.5 bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.02] rounded-lg text-white/[0.05] hover:text-emerald-500/20 transition-all hover:scale-105 active:scale-95 group z-[100]"
         title="Admin Panel"
       >
-        <Cpu size={24} className="group-hover:rotate-12 transition-transform" />
+        <Cpu size={14} className="group-hover:rotate-12 transition-transform" />
       </button>
     </div>
   );
