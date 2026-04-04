@@ -91,34 +91,75 @@ export default function App() {
 
   const fetchData = async () => {
     try {
+      console.log("Fetching data from /api/data...");
       const res = await fetch('/api/data');
+      
       if (!res.ok) {
-        console.warn(`Data fetch returned status: ${res.status}. Using default data.`);
-        setData(INITIAL_DATA);
+        console.warn(`Data fetch failed (status: ${res.status}). Using default data.`);
+        setData({ ...INITIAL_DATA, _storage: 'default' });
         return;
       }
+      
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        console.warn("Server did not return JSON. Using default data.");
-        setData(INITIAL_DATA);
+        console.warn("Server returned non-JSON data. Using default data.");
+        setData({ ...INITIAL_DATA, _storage: 'default' });
         return;
       }
-      const jsonData = await res.json();
       
+      const jsonData = await res.json();
+      console.log("Data received from server:", jsonData);
+      
+      if (!jsonData || typeof jsonData !== 'object') {
+        console.warn("Invalid data format received. Using default.");
+        setData({ ...INITIAL_DATA, _storage: 'default' });
+        return;
+      }
+
+      // 🛡️ Super-Defensive Merging Logic
       const mergedData: PortfolioData = {
         ...INITIAL_DATA,
-        ...jsonData,
-        hero: { ...INITIAL_DATA.hero, ...(jsonData?.hero || {}) },
-        about: { ...INITIAL_DATA.about, ...(jsonData?.about || {}) },
+        _storage: jsonData._storage || 'supabase',
+        hero: { 
+          ...INITIAL_DATA.hero, 
+          ...(jsonData?.hero || {}),
+          typingTexts: Array.isArray(jsonData?.hero?.typingTexts) ? jsonData.hero.typingTexts : INITIAL_DATA.hero.typingTexts
+        },
+        about: { 
+          ...INITIAL_DATA.about, 
+          ...(jsonData?.about || {}) 
+        },
         socials: Array.isArray(jsonData?.socials) ? jsonData.socials : INITIAL_DATA.socials,
-        skills: Array.isArray(jsonData?.skills) ? jsonData.skills : (jsonData?.skills ? Object.values(jsonData.skills) : INITIAL_DATA.skills),
-        projects: Array.isArray(jsonData?.projects) ? jsonData.projects : (jsonData?.projects ? Object.values(jsonData.projects) : INITIAL_DATA.projects),
+        skills: Array.isArray(jsonData?.skills) 
+          ? jsonData.skills 
+          : (jsonData?.skills && typeof jsonData.skills === 'object' 
+              ? Object.values(jsonData.skills) 
+              : INITIAL_DATA.skills),
+        projects: Array.isArray(jsonData?.projects) 
+          ? jsonData.projects 
+          : (jsonData?.projects && typeof jsonData.projects === 'object' 
+              ? Object.values(jsonData.projects) 
+              : INITIAL_DATA.projects),
+        contact: {
+          ...INITIAL_DATA.contact,
+          ...(jsonData?.contact || {})
+        },
+        security: {
+          ...INITIAL_DATA.security,
+          ...(jsonData?.security || {})
+        }
       };
       
+      // Ensure specific non-null fields
+      if (!mergedData.hero.name) mergedData.hero.name = INITIAL_DATA.hero.name;
+      if (!mergedData.hero.title) mergedData.hero.title = INITIAL_DATA.hero.title;
+      if (!Array.isArray(mergedData.hero.typingTexts)) mergedData.hero.typingTexts = INITIAL_DATA.hero.typingTexts;
+      
+      console.log("Successfully merged data:", mergedData);
       setData(mergedData);
     } catch (err) {
-      console.warn("Failed to fetch data from server. Using default data.", err);
-      setData(INITIAL_DATA);
+      console.error("Critical error fetching/processing data:", err);
+      setData({ ...INITIAL_DATA, _storage: 'default' });
     }
   };
 
@@ -245,9 +286,23 @@ export default function App() {
   );
 
   if (!data) return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center">
-      <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4" />
-      <p className="text-zinc-500 text-sm animate-pulse">Connecting to Database...</p>
+    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
+      <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-8 shadow-[0_0_30px_rgba(16,185,129,0.2)]" />
+      <h2 className="text-xl font-bold text-white mb-2 animate-pulse">Initializing Portfolio</h2>
+      <p className="text-zinc-500 text-sm max-w-xs leading-relaxed">
+        Connecting to the secure database and synchronizing your latest profile data...
+      </p>
+      
+      {/* 🛡️ Failsafe: If stuck for more than 5 seconds, show a manual trigger */}
+      <div className="mt-12 animate-in fade-in slide-in-from-bottom-4 duration-1000 fill-mode-both" style={{ animationDelay: '5s' }}>
+        <p className="text-zinc-600 text-xs mb-4">Taking longer than expected?</p>
+        <button 
+          onClick={() => setData({ ...INITIAL_DATA, _storage: 'default' })}
+          className="px-6 py-2 bg-white/5 hover:bg-white/10 text-zinc-400 text-xs rounded-full border border-white/10 transition-all"
+        >
+          Use Default Data
+        </button>
+      </div>
     </div>
   );
 
