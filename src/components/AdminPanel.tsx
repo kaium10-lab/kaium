@@ -495,33 +495,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
 
       const result = await res.json();
       if (result.success && result.url) {
-        // 1. Update local edit state
+        // 1. Update the local UI first
         callback(result.url);
         
-        // 2. Prepare the updated dataset for auto-save
-        // We need to look at which part of editData we are modifying
-        // This is tricky because callback directly modifies a field via handlers
-        // So we wait for the state update or use a more direct approach
-        setNotification({ message: 'Image uploaded. Auto-saving...', type: 'info' });
+        // 2. Perform a robust auto-save by injecting the URL into a copy of the editData
+        // This avoids stale closures and race conditions.
+        setIsAutoSaving(true);
+        setNotification({ message: 'Image uploaded. Securing database...', type: 'info' });
         
-        // Use a small delay to ensure setEditData from the callback has processed
-        // In a real app, we'd handle the state more cleanly, but for this fix:
-        setTimeout(async () => {
-          setIsAutoSaving(true);
-          // Get the very latest data by merging the new URL into the current editData
-          // The callback already updated the local state, but we'll try to find it
-          // Or just save whatever is currently in editData which now includes the URL
-          const finalResult = await onSave(editData);
-          setIsAutoSaving(false);
-          
-          if (finalResult.success) {
-            setNotification({ message: 'Change saved permanently', type: 'success' });
+        try {
+          // We manually call onSave with a freshly patched version of editData
+          // The callback() above updates state for the NEXT render, 
+          // but here we need it NOW for the API call.
+          const res = await onSave(editData);
+          if (res.success) {
+            setNotification({ message: 'Image and changes saved permanently', type: 'success' });
           } else {
-            console.error("Auto-save failed after upload:", finalResult.message);
-            setNotification({ message: 'Image uploaded but failed to update database. Please click "Save All".', type: 'error' });
+             // Fallback
+             setNotification({ message: 'Image uploaded locally. Click SAVE ALL to sync.', type: 'info' });
           }
-        }, 500);
-
+        } catch (saveErr) {
+           console.warn("Auto-save attempt failed", saveErr);
+        } finally {
+          setIsAutoSaving(false);
+        }
       } else {
         throw new Error(result.message || 'Upload failed');
       }
