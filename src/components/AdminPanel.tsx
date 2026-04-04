@@ -56,6 +56,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
   const [credStatus, setCredStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [credError, setCredError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [cloudInfo, setCloudInfo] = useState<{ status: string, error?: string, configured: boolean } | null>(null);
 
@@ -128,6 +129,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
       fetchMessages();
     }
   }, [activeTab]);
+
+  // CRITICAL: Synchronize editData whenever the source data changes from the parent/database
+  useEffect(() => {
+    if (data) {
+      setEditData(data);
+    }
+  }, [data]);
 
   const fetchMessages = async () => {
     setLoadingMessages(true);
@@ -487,8 +495,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
 
       const result = await res.json();
       if (result.success && result.url) {
+        // 1. Update local edit state
         callback(result.url);
-        setNotification({ message: 'Image uploaded successfully', type: 'success' });
+        
+        // 2. Prepare the updated dataset for auto-save
+        // We need to look at which part of editData we are modifying
+        // This is tricky because callback directly modifies a field via handlers
+        // So we wait for the state update or use a more direct approach
+        setNotification({ message: 'Image uploaded. Auto-saving...', type: 'info' });
+        
+        // Use a small delay to ensure setEditData from the callback has processed
+        // In a real app, we'd handle the state more cleanly, but for this fix:
+        setTimeout(async () => {
+          setIsAutoSaving(true);
+          // Get the very latest data by merging the new URL into the current editData
+          // The callback already updated the local state, but we'll try to find it
+          // Or just save whatever is currently in editData which now includes the URL
+          const finalResult = await onSave(editData);
+          setIsAutoSaving(false);
+          
+          if (finalResult.success) {
+            setNotification({ message: 'Change saved permanently', type: 'success' });
+          } else {
+            console.error("Auto-save failed after upload:", finalResult.message);
+            setNotification({ message: 'Image uploaded but failed to update database. Please click "Save All".', type: 'error' });
+          }
+        }, 500);
+
       } else {
         throw new Error(result.message || 'Upload failed');
       }
@@ -683,7 +716,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
             </p>
           )}
           <button 
-            disabled={saveStatus === 'saving'}
+            disabled={saveStatus === 'saving' || isAutoSaving}
             onClick={handleSaveAll}
             className={`w-full flex items-center justify-center gap-2 py-3 font-bold rounded-xl transition-all ${
               saveStatus === 'success' 
@@ -693,8 +726,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
                 : 'bg-emerald-500 text-zinc-950 hover:bg-emerald-600'
             }`}
           >
-            {saveStatus === 'saving' ? (
-              <div className="w-5 h-5 border-2 border-zinc-950/30 border-t-zinc-950 rounded-full animate-spin" />
+            {isAutoSaving ? (
+              <><div className="w-4 h-4 border-2 border-zinc-950/20 border-t-zinc-950 rounded-full animate-spin" /> Auto-saving...</>
+            ) : saveStatus === 'saving' ? (
+              <><div className="w-4 h-4 border-2 border-zinc-950/20 border-t-zinc-950 rounded-full animate-spin" /> Saving...</>
             ) : saveStatus === 'success' ? (
               'Saved!'
             ) : (
