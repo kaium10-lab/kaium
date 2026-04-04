@@ -495,38 +495,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
 
       const result = await res.json();
       if (result.success && result.url) {
-        // 1. Update the local UI first
+        // Update local state so user sees the change immediately
         callback(result.url);
-        
-        // 2. Perform a robust auto-save by injecting the URL into a copy of the editData
-        // This avoids stale closures and race conditions.
-        setIsAutoSaving(true);
-        setNotification({ message: 'Image uploaded. Securing database...', type: 'info' });
-        
-        try {
-          // We manually call onSave with a freshly patched version of editData
-          // The callback() above updates state for the NEXT render, 
-          // but here we need it NOW for the API call.
-          const res = await onSave(editData);
-          if (res.success) {
-            setNotification({ message: 'Image and changes saved permanently', type: 'success' });
-          } else {
-             // Fallback
-             setNotification({ message: 'Image uploaded locally. Click SAVE ALL to sync.', type: 'info' });
-          }
-        } catch (saveErr) {
-           console.warn("Auto-save attempt failed", saveErr);
-        } finally {
-          setIsAutoSaving(false);
-        }
+        setNotification({ message: 'Image uploaded successfully! Please click "Save All" to make it permanent.', type: 'info' });
       } else {
         throw new Error(result.message || 'Upload failed');
       }
     } catch (err: any) {
-      console.warn("Upload error:", err);
+      console.error("Upload error:", err);
       setNotification({ message: `Upload failed: ${err.message}`, type: 'error' });
     } finally {
       setUploading(false);
+      setIsAutoSaving(false);
     }
   };
 
