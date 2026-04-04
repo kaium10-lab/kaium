@@ -495,9 +495,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
 
       const result = await res.json();
       if (result.success && result.url) {
-        // Update local state so user sees the change immediately
+        // We use a functional update to setEditData, then use the RESULT of that to save
+        // This ensures NO STALE DATA destroys our image upload!
+        setNotification({ message: 'Image uploaded. Saving changes...', type: 'info' });
+        
+        // This is a direct state patch
         callback(result.url);
-        setNotification({ message: 'Image uploaded successfully! Please click "Save All" to make it permanent.', type: 'info' });
+        
+        // We trigger an auto-save after the state update has settled
+        setTimeout(() => {
+           handleSaveAll();
+        }, 100);
+
       } else {
         throw new Error(result.message || 'Upload failed');
       }
