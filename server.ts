@@ -697,36 +697,42 @@ app.get("/api/data", async (req, res) => {
     if (supabaseUrl && supabaseKey && !supabaseUrl.includes('mock')) {
       try {
         const fileContent = fs.readFileSync(req.file.path);
-        const fileExt = path.extname(req.file.originalname);
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}${fileExt}`;
-        const bucketName = 'uploads';
+        const uniqueName = `${Date.now()}-${req.file.originalname.replace(/\s+/g, "_")}`;
 
-        const { data, error } = await supabase.storage
-          .from(bucketName)
-          .upload(fileName, fileContent, {
+        // 1. Ensure bucket exists (best effort)
+        try {
+          const { data: buckets } = await supabase.storage.listBuckets();
+          if (buckets && !buckets.some(b => b.name === 'uploads')) {
+            console.log("📦 Initializing 'uploads' bucket...");
+            await supabase.storage.createBucket('uploads', { public: true });
+          }
+        } catch (e) { /* ignore bucket check errors */ }
+
+        // 2. Upload to Supabase
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('uploads')
+          .upload(uniqueName, fileContent, {
             contentType: req.file.mimetype,
+            cacheControl: '3600',
             upsert: false
           });
 
-        if (!error && data) {
+        if (uploadError) {
+          console.error("🔴 Supabase Storage Error:", uploadError.message);
+          // Fallback to local later
+        } else if (uploadData) {
+          // 3. Get Public URL
           const { data: { publicUrl } } = supabase.storage
-            .from(bucketName)
-            .getPublicUrl(fileName);
-          
-          // Clean up the local temporary file
-          try { fs.unlinkSync(req.file.path); } catch (e) {}
-          
-          console.log("File successfully uploaded to Supabase Storage:", publicUrl);
-          return res.json({ success: true, url: publicUrl });
-        } else {
-          console.error(`🔴 Supabase Storage Error [${error?.statusCode || 'N/A'}]:`, error?.message || "Unknown error");
-          console.warn("Falling back to local storage URL. NOTE: This image will likely disappear on Vercel unless the bucket is created.");
-          
-          if (error?.message?.includes('bucket not found')) {
-             console.error("CRITICAL: The 'uploads' bucket was NOT found in Supabase. Please run the updated setup.sql in your Supabase SQL Editor.");
-          } else if (error?.error === 'Unauthorized' || error?.message?.includes('policy')) {
-             console.error("CRITICAL: RLS Policies are blocking the upload. Please run the updated setup.sql to add storage policies.");
+            .from('uploads')
+            .getPublicUrl(uniqueName);
+
+          // Cleanup temp local file after successful upload
+          if (fs.existsSync(req.file.path)) {
+             try { fs.unlinkSync(req.file.path); } catch (e) {}
           }
+
+          console.log("✅ Image saved to Supabase:", publicUrl);
+          return res.json({ success: true, url: publicUrl, storage: 'supabase' });
         }
       } catch (err: any) {
         console.error("Supabase Storage Exception:", err.message);
@@ -735,7 +741,8 @@ app.get("/api/data", async (req, res) => {
 
     // Fallback if Supabase is not available or failed
     const imageUrl = `/uploads/${req.file.filename}`;
-    res.json({ success: true, url: imageUrl });
+    console.log("⚠️ Serving image from local storage:", imageUrl);
+    res.json({ success: true, url: imageUrl, storage: 'local' });
   });
 
 // Catch-all for undefined API routes to prevent returning HTML
