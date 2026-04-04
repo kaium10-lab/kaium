@@ -58,6 +58,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
   const [credError, setCredError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [pendingUploadSave, setPendingUploadSave] = useState(false);
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [cloudInfo, setCloudInfo] = useState<{ status: string, error?: string, configured: boolean } | null>(null);
 
@@ -143,6 +144,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
   useEffect(() => {
     editDataRef.current = editData;
   }, [editData]);
+
+  // AUTO-SAVE after image upload: waits for React to update editData, then saves
+  useEffect(() => {
+    if (pendingUploadSave) {
+      setPendingUploadSave(false);
+      setIsAutoSaving(true);
+      // editData is now GUARANTEED to have the new image URL
+      onSave(editData).then(result => {
+        setIsAutoSaving(false);
+        if (result.success) {
+          setNotification({ message: 'Image saved permanently!', type: 'success' });
+        } else {
+          setNotification({ message: 'Image uploaded but database save failed. Click Save All.', type: 'error' });
+        }
+      }).catch(err => {
+        setIsAutoSaving(false);
+        console.error('Auto-save failed:', err);
+        setNotification({ message: 'Auto-save failed. Please click Save All.', type: 'error' });
+      });
+    }
+  }, [editData, pendingUploadSave]);
 
   const fetchMessages = async () => {
     setLoadingMessages(true);
@@ -502,27 +524,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
 
       const result = await res.json();
       if (result.success && result.url) {
-        // Step 1: Update UI immediately
+        // Step 1: Update the image URL in editData
         callback(result.url);
-        setNotification({ message: 'Image uploaded! Auto-saving...', type: 'info' });
-
-        // Step 2: Wait for React to process the state update,
-        // then save using the ref which always has the LATEST data
-        setTimeout(async () => {
-          try {
-            const latestData = editDataRef.current;
-            const saveResult = await onSave(latestData);
-            if (saveResult.success) {
-              setNotification({ message: 'Image saved permanently!', type: 'success' });
-            } else {
-              setNotification({ message: 'Image uploaded but save failed. Click Save All.', type: 'error' });
-            }
-          } catch (saveErr) {
-            console.error('Auto-save after upload failed:', saveErr);
-            setNotification({ message: 'Auto-save failed. Please click Save All.', type: 'error' });
-          }
-        }, 500);
-
+        // Step 2: Set the flag - useEffect will auto-save with the LATEST editData
+        setPendingUploadSave(true);
+        setNotification({ message: 'Image uploaded! Saving to database...', type: 'info' });
       } else {
         throw new Error(result.message || 'Upload failed');
       }
@@ -531,7 +537,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
       setNotification({ message: `Upload failed: ${err.message}`, type: 'error' });
     } finally {
       setUploading(false);
-      setIsAutoSaving(false);
     }
   };
 
