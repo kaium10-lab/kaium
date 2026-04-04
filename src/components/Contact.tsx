@@ -58,6 +58,18 @@ export const Contact = ({ data, socials, formData, setFormData, formStatus, hand
               subtitle="Feel free to reach out for collaborations or just a friendly hello." 
             />
             <div className="space-y-8 mt-12">
+              {data?.phone && (
+                <a href={`tel:${data.phone}`} className="flex items-start gap-6 group">
+                  <div className="p-4 bg-zinc-900 rounded-2xl border border-white/5 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-zinc-950 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-phone"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  </div>
+                  <div>
+                    <h4 className="text-white font-bold mb-1">Phone</h4>
+                    <p className="text-zinc-400 group-hover:text-emerald-500 transition-colors">{data.phone}</p>
+                  </div>
+                </a>
+              )}
+              
               <a href={`mailto:${data?.email || ""}`} className="flex items-start gap-6 group">
                 <div className="p-4 bg-zinc-900 rounded-2xl border border-white/5 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-zinc-950 transition-all">
                   <Mail size={24} />

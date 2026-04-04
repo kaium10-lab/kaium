@@ -47,6 +47,7 @@ export interface PortfolioData {
     github: string;
     address: string;
     addressLink?: string;
+    phone?: string;
   };
   security: {
     stayLoggedIn: boolean;

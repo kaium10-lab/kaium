@@ -1,0 +1,70 @@
+{
+  "hero": {
+    "name": "Abdul Kaium",
+    "title": "Computer Science Student",
+    "favicon": "https://voyilgpsyxurfyjkllvz.supabase.co/storage/v1/object/public/uploads/1775316643698-kaium.jpg",
+    "description": "Currently studying Computer Science & Technology at Daffodil Polytechnic Institute.",
+    "typingTexts": [
+      "Python Enthusiast",
+      "Cyber Security Learner",
+      "Diploma Student"
+    ]
+  },
+  "about": {
+    "bio1": "I am a passionate developer with a love for clean code and innovative solutions.",
+    "bio2": "With years of experience in the industry, I specialize in building scalable web applications.",
+    "image": "https://voyilgpsyxurfyjkllvz.supabase.co/storage/v1/object/public/uploads/1775316687096-kaium.jpg",
+    "location": "New York, USA",
+    "experience": "5+ Years"
+  },
+  "skills": [],
+  "contact": {
+    "email": "a.kaium2008@gmail.com",
+    "github": "https://github.com/kaium10-lab",
+    "address": "Bonomala,Tongi,Gazipur",
+    "linkedin": "https://www.linkedin.com/in/a-kaium10/",
+    "addressLink": "https://www.google.com/maps/place/Bonomala+Rd,+Tongi/@23.9127,90.403172,983m/data=!3m2!1e3!4b1!4m6!3m5!1s0x3755c4fbd1d44eb3:0x56e3b07f1698ea63!8m2!3d23.9126951!4d90.4057523!16s%2Fg%2F12lsmy363?authuser=0&entry=ttu&g_ep=EgoyMDI2MDQwMS4wIKXMDSoASAFQAw%3D%3D"
+  },
+  "socials": [
+    {
+      "id": "1775275369802",
+      "url": "https://www.linkedin.com/in/a-kaium10/",
+      "icon": "Globe",
+      "name": "Linked-in"
+    },
+    {
+      "id": "1775275501815",
+      "url": "https://github.com/kaium10-lab",
+      "icon": "Globe",
+      "name": "GitHub"
+    }
+  ],
+  "_storage": "supabase",
+  "projects": [
+    {
+      "id": "1775274968568",
+      "img": "https://voyilgpsyxurfyjkllvz.supabase.co/storage/v1/object/public/uploads/1775316697871-ChatGPT_Image_Apr_1,_2026,_10_38_39_PM.png",
+      "desc": "Smart AI Assistant (Powered by Gemini API) is a Python-based smart assistant that executes user commands to open applications and browse websites. It uses AI to process commands and automate tasks, making computer interaction faster and more efficient.",
+      "tags": [
+        "Python",
+        "Gemini-API"
+      ],
+      "title": "Smart AI Assistant ",
+      "githubUrl": "https://github.com/kaium10-lab/Smart-AI-Assistant-"
+    },
+    {
+      "id": "1775275097558",
+      "img": "https://voyilgpsyxurfyjkllvz.supabase.co/storage/v1/object/public/uploads/1775316720657-Discord_logo.png",
+      "desc": "Built a scalable Discord chatbot with command handling system, real-time interaction, and automation features. Implemented using Python showcasing my knowledge of APIs, asynchronous programming, and bot development.",
+      "tags": [
+        "Python",
+        ""
+      ],
+      "title": "Discord Chatbot",
+      "githubUrl": "https://github.com/kaium10-lab/Discord_Chat_bot"
+    }
+  ],
+  "security": {
+    "stayLoggedIn": true
+  }
+}
