@@ -235,7 +235,7 @@ export default function App() {
       
       const result = await res.json();
       if (res.ok && result.success) {
-        const updatedData = { ...newData, _storage: result.localOnly ? 'local' : 'supabase' };
+        const updatedData = { ...syncedData, _storage: result.localOnly ? 'local' : 'supabase' };
         setData(updatedData);
         return { success: true, message: result.warning || "Saved successfully" };
       }

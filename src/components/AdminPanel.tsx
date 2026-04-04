@@ -202,9 +202,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
         onClose();
       }, 3000);
     } else {
+      const errorMsg = result.message || 'Failed to save data';
       setSaveStatus('error');
-      setSaveError(result.message || 'Failed to save data');
-      setNotification({ message: result.message || 'Failed to save data', type: 'error' });
+      setSaveError(errorMsg);
+      setNotification({ message: errorMsg, type: 'error' });
+      return { success: false, message: errorMsg };
     }
   };
 

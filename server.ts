@@ -398,45 +398,38 @@ app.get("/api/data", async (req, res) => {
 
     console.log("Attempting to save portfolio data to Supabase...");
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('settings')
-        .upsert(payload, { onConflict: 'key' });
+        .upsert([payload], { onConflict: 'key' }) // Wrap in array for better compatibility
+        .select();
       
       if (error) {
+        console.error("🔴 Supabase Save Error:", error);
         handleSupabaseError(error, "saveData");
         
-        let customMessage = error.message;
-        if (error.code === '42P01') {
-          customMessage = "The 'settings' table does not exist in Supabase. Data was saved LOCALLY only.";
-        } else if (error.code === '42501') {
-          customMessage = "Supabase RLS is blocking the save. Data was saved LOCALLY only.";
-        } else {
-          customMessage = `Supabase error: ${error.message}. Data was saved LOCALLY only.`;
-        }
-
-        // Return error if no local persistence
+        const errorDetail = error.message || JSON.stringify(error);
+        
+        // Return clear error if no local persistence
         if (!localDb) {
            return res.status(500).json({ 
              success: false, 
-             message: `Failed to save to Supabase and no local database available. Error: ${customMessage}`,
-             error: error
+             message: `Database Error: ${errorDetail}`,
+             details: error
            });
         }
 
-        // Return success with warning if only local save worked
         return res.json({ 
           success: true, 
-          warning: customMessage,
-          localOnly: true
+          warning: `Saved LOCAL ONLY. Supabase Error: ${errorDetail}`,
+          localOnly: true,
+          error: error
         });
       }
       
-      console.log("Portfolio data saved successfully to Supabase.");
-      res.json({ success: true });
+      console.log("✅ Portfolio data saved successfully to Supabase.");
+      res.json({ success: true, storage: 'supabase' });
     } catch (err: any) {
-      console.error("Server Save Exception:", err);
-      // Still return success if local save worked
-      res.json({ success: true, localOnly: true, warning: "Saved locally due to server error." });
+      res.status(500).json({ success: false, message: "Server Exception: " + err.message });
     }
   });
 
