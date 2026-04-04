@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PortfolioData, Project, SkillCategory, SocialAccount } from '../types';
 import { 
   Save, 
@@ -45,6 +45,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
   const [loginError, setLoginError] = useState('');
   const [blockedUntil, setBlockedUntil] = useState<number | null>(null);
   const [editData, setEditData] = useState<PortfolioData>(data);
+  const editDataRef = useRef<PortfolioData>(data);
   const [activeTab, setActiveTab] = useState<Tab>('hero');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -134,8 +135,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
   useEffect(() => {
     if (data) {
       setEditData(data);
+      editDataRef.current = data;
     }
   }, [data]);
+
+  // Keep ref in sync with editData at all times
+  useEffect(() => {
+    editDataRef.current = editData;
+  }, [editData]);
 
   const fetchMessages = async () => {
     setLoadingMessages(true);
@@ -495,17 +502,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
 
       const result = await res.json();
       if (result.success && result.url) {
-        // We use a functional update to setEditData, then use the RESULT of that to save
-        // This ensures NO STALE DATA destroys our image upload!
-        setNotification({ message: 'Image uploaded. Saving changes...', type: 'info' });
-        
-        // This is a direct state patch
+        // Step 1: Update UI immediately
         callback(result.url);
-        
-        // We trigger an auto-save after the state update has settled
-        setTimeout(() => {
-           handleSaveAll();
-        }, 100);
+        setNotification({ message: 'Image uploaded! Auto-saving...', type: 'info' });
+
+        // Step 2: Wait for React to process the state update,
+        // then save using the ref which always has the LATEST data
+        setTimeout(async () => {
+          try {
+            const latestData = editDataRef.current;
+            const saveResult = await onSave(latestData);
+            if (saveResult.success) {
+              setNotification({ message: 'Image saved permanently!', type: 'success' });
+            } else {
+              setNotification({ message: 'Image uploaded but save failed. Click Save All.', type: 'error' });
+            }
+          } catch (saveErr) {
+            console.error('Auto-save after upload failed:', saveErr);
+            setNotification({ message: 'Auto-save failed. Please click Save All.', type: 'error' });
+          }
+        }, 500);
 
       } else {
         throw new Error(result.message || 'Upload failed');
