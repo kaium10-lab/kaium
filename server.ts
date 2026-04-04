@@ -396,39 +396,31 @@ app.get("/api/data", async (req, res) => {
       }
     }
 
-    console.log("Attempting to save portfolio data to Supabase...");
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('settings')
-        .upsert([payload], { onConflict: 'key' }) // Wrap in array for better compatibility
+        .upsert([payload], { onConflict: 'key' })
         .select();
-      
+
       if (error) {
         console.error("🔴 Supabase Save Error:", error);
         handleSupabaseError(error, "saveData");
-        
         const errorDetail = error.message || JSON.stringify(error);
-        
-        // Return clear error if no local persistence
         if (!localDb) {
-           return res.status(500).json({ 
-             success: false, 
-             message: `Database Error: ${errorDetail}`,
-             details: error
-           });
+           return res.status(500).json({ success: false, message: `Database Error: ${errorDetail}` });
         }
-
         return res.json({ 
           success: true, 
           warning: `Saved LOCAL ONLY. Supabase Error: ${errorDetail}`,
-          localOnly: true,
-          error: error
+          localOnly: true 
         });
       }
+
       console.log("✅ Portfolio data saved successfully to Supabase.");
-      res.json({ success: true, storage: 'supabase' });
+      return res.json({ success: true, storage: 'supabase' });
     } catch (err: any) {
-      res.status(500).json({ success: false, message: "Server Exception: " + err.message });
+      console.error("🔴 Server Save Exception:", err);
+      return res.status(500).json({ success: false, message: "Server Exception: " + err.message });
     }
   });
 

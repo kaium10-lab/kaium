@@ -54,7 +54,7 @@ class ErrorBoundary extends Component<Props, State> {
             maxWidth: '600px', 
             overflow: 'auto',
             marginBottom: '2rem',
-            border: '1px border rgba(255,255,255,0.1)'
+            border: '1px solid rgba(255,255,255,0.1)'
           }}>
             <code style={{ fontSize: '0.8rem', color: '#fca5a5' }}>
               {this.state.error?.name}: {this.state.error?.message}
