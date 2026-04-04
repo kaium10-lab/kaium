@@ -381,13 +381,15 @@ app.get("/api/data", async (req, res) => {
     const newData = req.body;
     const payload = { 
       key: 'portfolio_data', 
-      value: JSON.stringify(newData) 
+      value: newData // Send the object directly for JSONB columns, better for Supabase
     };
+
+    const payloadString = JSON.stringify(payload.value);
 
     // Always save to local SQLite first as a reliable cache
     if (localDb) {
       try {
-        localDb.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(payload.key, payload.value);
+        localDb.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(payload.key, payloadString);
         console.log("Portfolio data cached to local SQLite.");
       } catch (localErr) {
         console.error("Failed to save to local SQLite:", localErr);
@@ -721,16 +723,20 @@ app.get("/api/data", async (req, res) => {
           // Clean up the local temporary file
           try { fs.unlinkSync(req.file.path); } catch (e) {}
           
-          console.log("File uploaded to Supabase Storage:", publicUrl);
+          console.log("File successfully uploaded to Supabase Storage:", publicUrl);
           return res.json({ success: true, url: publicUrl });
         } else {
-          console.warn("Supabase Storage upload failed (falling back to local):", error?.message);
+          console.error(`🔴 Supabase Storage Error [${error?.statusCode || 'N/A'}]:`, error?.message || "Unknown error");
+          console.warn("Falling back to local storage URL. NOTE: This image will likely disappear on Vercel unless the bucket is created.");
+          
           if (error?.message?.includes('bucket not found')) {
-            console.warn("HINT: Please create a public bucket named 'uploads' in your Supabase project.");
+             console.error("CRITICAL: The 'uploads' bucket was NOT found in Supabase. Please run the updated setup.sql in your Supabase SQL Editor.");
+          } else if (error?.error === 'Unauthorized' || error?.message?.includes('policy')) {
+             console.error("CRITICAL: RLS Policies are blocking the upload. Please run the updated setup.sql to add storage policies.");
           }
         }
-      } catch (err) {
-        console.error("Supabase Storage exception:", err);
+      } catch (err: any) {
+        console.error("Supabase Storage Exception:", err.message);
       }
     }
 

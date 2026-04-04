@@ -113,4 +113,26 @@ VALUES ('portfolio_data', '{
     { "id": "3", "name": "Email", "url": "mailto:admin@kaium.com", "icon": "Mail" }
   ]
 }')
-ON CONFLICT (key) DO NOTHING;
+-- 9. Create 'uploads' bucket in Supabase Storage
+-- Note: This might not work if your user doesn't have permissions,
+-- but typically you can run this in the SQL Editor.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('uploads', 'uploads', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 10. Set up Storage Policies
+-- Allow public access to all files in the 'uploads' bucket
+CREATE POLICY "Public Access"
+ON storage.objects FOR SELECT
+USING ( bucket_id = 'uploads' );
+
+-- Allow anyone to upload to the 'uploads' bucket
+-- (In production, you might want to restrict this to authenticated users)
+CREATE POLICY "Public Insert"
+ON storage.objects FOR INSERT
+WITH CHECK ( bucket_id = 'uploads' );
+
+-- Allow anyone to delete their own files or all (for admin simplicity)
+CREATE POLICY "Public Delete"
+ON storage.objects FOR DELETE
+USING ( bucket_id = 'uploads' );
