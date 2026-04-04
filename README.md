@@ -59,20 +59,33 @@ A modern, full-stack personal portfolio website built with React, Express, and S
 
 ## 🗄️ Database Setup (Supabase)
 
-Run the following SQL in your Supabase SQL Editor:
+For a quick setup, follow these steps:
+
+1. Open the [setup.sql](file:///media/abdulkaium/New%20Volume2/portfolio/setup.sql) file.
+2. Copy its entire content.
+3. Paste it into the **SQL Editor** in your Supabase dashboard and click **Run**.
+
+This script will create all necessary tables (`settings`, `users`, `messages`), set up Row Level Security (RLS) policies, and seed your initial portfolio data.
+
+### Manual Table Structure (Reference)
+
+If you prefer to create tables manually, use these definitions:
 
 ```sql
+-- Settings table for portfolio content
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
-  value TEXT
+  value JSONB
 );
 
+-- Admin users table
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   email TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL
 );
 
+-- Messages table for contact form
 CREATE TABLE IF NOT EXISTS messages (
   id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   name TEXT,
