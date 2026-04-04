@@ -34,7 +34,9 @@ const initSQLite = async () => {
   }
   
   try {
-    const { default: Database } = await import('better-sqlite3');
+    // @ts-ignore - Bypass missing type definition errors in IDE
+    const sqlite3: any = await import('better-sqlite3');
+    const Database = sqlite3.default || sqlite3;
     localDb = new Database("data.db");
     console.log("Local SQLite database initialized.");
     
