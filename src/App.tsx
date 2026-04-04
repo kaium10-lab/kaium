@@ -52,12 +52,14 @@ export default function App() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [isOffline, setIsOffline] = useState(false);
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   useEffect(() => {
     let timeout = setTimeout(() => {
-      if (!data) setIsOffline(true);
-    }, 10000); // 10s timeout
+      if (!data && !fetchError) setIsOffline(true);
+    }, 15000); // Increased to 15s for slower cloud connections
     return () => clearTimeout(timeout);
-  }, [data]);
+  }, [data, fetchError]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -157,8 +159,9 @@ export default function App() {
       
       console.log("Successfully merged data:", mergedData);
       setData(mergedData);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Critical error fetching/processing data:", err);
+      setFetchError(err.message || String(err));
       setData({ ...INITIAL_DATA, _storage: 'default' });
     }
   };
@@ -272,9 +275,12 @@ export default function App() {
       <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
         <Cpu className="text-red-500 animate-pulse" size={32} />
       </div>
-      <h1 className="text-2xl font-bold text-white mb-2">Backend Server Offline</h1>
-      <p className="text-zinc-400 max-w-sm mb-8">
-        Your portfolio cannot connect to the database because the server is not running.
+      <h1 className="text-2xl font-bold text-white mb-2">Backend Connection Issue</h1>
+      <p className="text-zinc-400 max-w-sm mb-4">
+        {fetchError ? `Error: ${fetchError}` : "Your portfolio cannot connect to the database or the server is not responding."}
+      </p>
+      <p className="text-zinc-600 text-xs mb-8">
+        HINT: Make sure 'npm run dev' is running in your terminal.
       </p>
       <button 
         onClick={() => window.location.reload()}

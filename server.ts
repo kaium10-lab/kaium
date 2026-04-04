@@ -279,17 +279,18 @@ app.use("/uploads", express.static(uploadDir));
 
 // Removed top-level async Supabase check for Vercel stability
 const checkSupabase = async () => {
-    console.log("Checking Supabase connection...");
+    console.log("🔍 Checking Supabase connection...");
     try {
       const { data, error } = await supabase.from('settings').select('key').limit(1);
       if (error) {
-        console.error("Supabase Connection Failed:", error.message);
-        if (error.code === 'PGRST301') console.error("HINT: Your SUPABASE_KEY is invalid or expired.");
+        console.error("🔴 Supabase Connection Failed:", error.message);
+        if (error.code === 'PGRST301') console.error("💡 HINT: Your SUPABASE_KEY is invalid or expired.");
+        if (error.code === '42P01') console.error("💡 HINT: 'settings' table not found. Run setup.sql!");
       } else {
-        console.log("Supabase Connection Successful! (Cloud Sync Active)");
+        console.log("✅ Supabase Connection Successful! (Cloud Sync Active)");
       }
     } catch (e: any) {
-      console.error("Supabase Connection Exception:", e.message);
+      console.error("🔴 Supabase Connection Exception:", e.message);
     }
 };
 
