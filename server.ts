@@ -702,7 +702,7 @@ app.get("/api/data", async (req, res) => {
         // 1. Ensure bucket exists (best effort)
         try {
           const { data: buckets } = await supabase.storage.listBuckets();
-          if (buckets && !buckets.some(b => b.name === 'uploads')) {
+          if (buckets && !buckets.some((b: any) => b.name === 'uploads')) {
             console.log("📦 Initializing 'uploads' bucket...");
             await supabase.storage.createBucket('uploads', { public: true });
           }
