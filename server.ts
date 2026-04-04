@@ -425,7 +425,6 @@ app.get("/api/data", async (req, res) => {
           error: error
         });
       }
-      
       console.log("✅ Portfolio data saved successfully to Supabase.");
       res.json({ success: true, storage: 'supabase' });
     } catch (err: any) {
