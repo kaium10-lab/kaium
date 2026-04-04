@@ -229,13 +229,6 @@ export default function App() {
         return { success: false, message: "Session expired. Please login again." };
       }
       
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        let customMsg = `Server returned non-JSON response (${res.status}).`;
-        if (res.status === 413) customMsg = "Data too large for server.";
-        return { success: false, message: customMsg };
-      }
-      
       const result = await res.json();
       if (res.ok && result.success) {
         const updatedData = { ...syncedData, _storage: result.localOnly ? 'local' : 'supabase' };
@@ -270,49 +263,51 @@ export default function App() {
     }
   };
 
-  if (isOffline && !data) return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
-      <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
-        <Cpu className="text-red-500 animate-pulse" size={32} />
-      </div>
-      <h1 className="text-2xl font-bold text-white mb-2">Backend Connection Issue</h1>
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 mb-6 w-full max-w-sm text-left font-mono text-[10px]">
-        <div className="text-emerald-500 mb-1">🔍 DIAGNOSTICS:</div>
-        <div className="text-zinc-500">Status: <span className="text-red-400">{fetchError ? 'Fetch Failed' : 'Timeout'}</span></div>
-        <div className="text-zinc-500">Error: <span className="text-zinc-300">{fetchError || 'Waiting for response...'}</span></div>
-        <div className="text-zinc-500 mt-2 text-zinc-600 font-sans border-t border-zinc-800 pt-2 italic">
-          Try running: <span className="text-zinc-400 not-italic">npm run dev</span> (NOT 'npx vite')
+  if (isOffline && !data) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20">
+          <Cpu className="text-red-500 animate-pulse" size={32} />
         </div>
-      </div>
-      <button 
-        onClick={() => window.location.reload()}
-        className="w-full max-w-xs py-3 bg-emerald-500 text-zinc-950 font-bold rounded-xl hover:bg-emerald-600 transition-all"
-      >
-        Check Again
-      </button>
-    </div>
-  );
-
-  if (!data) return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
-      <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-8 shadow-[0_0_30px_rgba(16,185,129,0.2)]" />
-      <h2 className="text-xl font-bold text-white mb-2 animate-pulse">Initializing Portfolio</h2>
-      <p className="text-zinc-500 text-sm max-w-xs leading-relaxed">
-        Connecting to the secure database and synchronizing your latest profile data...
-      </p>
-      
-      {/* 🛡️ Failsafe: If stuck for more than 5 seconds, show a manual trigger */}
-      <div className="mt-12 animate-in fade-in slide-in-from-bottom-4 duration-1000 fill-mode-both" style={{ animationDelay: '5s' }}>
-        <p className="text-zinc-600 text-xs mb-4">Taking longer than expected?</p>
+        <h1 className="text-2xl font-bold text-white mb-2">Backend Connection Issue</h1>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 mb-6 w-full max-w-sm text-left font-mono text-[10px]">
+          <div className="text-emerald-500 mb-1">🔍 DIAGNOSTICS:</div>
+          <div className="text-zinc-500">Status: <span className="text-red-400">{fetchError ? 'Fetch Failed' : 'Timeout'}</span></div>
+          <div className="text-zinc-500">Error: <span className="text-zinc-300">{fetchError || 'Waiting for response...'}</span></div>
+          <div className="text-zinc-500 mt-2 text-zinc-600 font-sans border-t border-zinc-800 pt-2 italic">
+            Try running: <span className="text-zinc-400 not-italic">npm run dev</span>
+          </div>
+        </div>
         <button 
-          onClick={() => setData({ ...INITIAL_DATA, _storage: 'default' })}
-          className="px-6 py-2 bg-white/5 hover:bg-white/10 text-zinc-400 text-xs rounded-full border border-white/10 transition-all"
+          onClick={() => window.location.reload()}
+          className="w-full max-w-xs py-3 bg-emerald-500 text-zinc-950 font-bold rounded-xl hover:bg-emerald-600 transition-all"
         >
-          Use Default Data
+          Check Again
         </button>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-8 shadow-[0_0_30px_rgba(16,185,129,0.2)]" />
+        <h2 className="text-xl font-bold text-white mb-2 animate-pulse">Initializing Portfolio</h2>
+        <p className="text-zinc-500 text-sm max-w-xs leading-relaxed">
+          Connecting to the secure database and synchronizing your latest profile data...
+        </p>
+        <div className="mt-12">
+          <p className="text-zinc-600 text-xs mb-4">Taking longer than expected?</p>
+          <button 
+            onClick={() => setData({ ...INITIAL_DATA, _storage: 'default' })}
+            className="px-6 py-2 bg-white/5 hover:bg-white/10 text-zinc-400 text-xs rounded-full border border-white/10 transition-all"
+          >
+            Use Default Data
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen selection:bg-emerald-500/30 selection:text-emerald-200">

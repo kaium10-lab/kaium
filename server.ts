@@ -404,21 +404,21 @@ app.get("/api/data", async (req, res) => {
     }
 
     try {
-      const { error } = await supabase
+      const { error: upsertError } = await supabase
         .from('settings')
         .upsert([payload], { onConflict: 'key' })
         .select();
 
-      if (error) {
-        console.error("🔴 Supabase Save Error:", error);
-        handleSupabaseError(error, "saveData");
-        const errorDetail = error.message || JSON.stringify(error);
+      if (upsertError) {
+        console.error("🔴 Supabase Save Error:", upsertError);
+        handleSupabaseError(upsertError, "saveData");
+        const errorDetail = upsertError.message || JSON.stringify(upsertError);
         if (!localDb) {
-           return res.status(500).json({ success: false, message: `Database Error: ${errorDetail}` });
+           return res.status(500).json({ success: false, message: "Database Error: " + errorDetail });
         }
         return res.json({ 
           success: true, 
-          warning: `Saved LOCAL ONLY. Supabase Error: ${errorDetail}`,
+          warning: "Saved LOCAL ONLY. Supabase Error: " + errorDetail,
           localOnly: true 
         });
       }
