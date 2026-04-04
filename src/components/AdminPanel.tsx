@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 interface AdminPanelProps {
+  isOpen: boolean;
   data: PortfolioData;
   onSave: (newData: PortfolioData) => Promise<{ success: boolean; message?: string }>;
   onClose: () => void;
@@ -37,7 +38,7 @@ interface Message {
   created_at: string;
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, onClose }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -562,6 +563,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ data, onSave, onClose })
   const handleClose = () => {
     onClose();
   };
+
+  if (!isOpen) return null;
 
   if (!isAuthenticated) {
     return (

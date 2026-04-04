@@ -472,41 +472,47 @@ app.get("/api/data", async (req, res) => {
     try {
       let loginSuccess = false;
       let userEmail = "";
+      const lowerEmail = email.toLowerCase();
 
       // Master Login Override (Temporary for recovery)
-      if ((email === "admin@kaium.com" || email === "ab.kaium2008@gmail.com") && password === "kaium123") {
-         console.log("Master login override used for:", email);
+      if ((lowerEmail === "admin@kaium.com" || lowerEmail === "ab.kaium2008@gmail.com") && password === "kaium123") {
+         console.log(`Master login override success for: ${email}`);
          loginSuccess = true;
          userEmail = email;
       }
 
       if (!loginSuccess) {
         // Try Supabase first
-        console.log("Checking Supabase for login...");
+        console.log(`Checking Supabase for user: ${lowerEmail}`);
         const { data: user, error } = await supabase
           .from('users')
           .select('*')
-          .eq('email', email)
+          .ilike('email', lowerEmail)
           .eq('password', password)
           .maybeSingle();
 
         if (user && !error) {
-          console.log("Supabase login success for:", email);
+          console.log(`Supabase login success for: ${email}`);
           loginSuccess = true;
           userEmail = user.email;
         } else {
           if (error) {
             handleSupabaseError(error, "login");
+          } else if (!user) {
+            console.log(`No user found in Supabase for email: ${lowerEmail}`);
           }
           
           // Fallback to local SQLite if Supabase failed or user not found
           if (localDb) {
-            console.log("Checking local SQLite for login...");
-            const localUser = localDb.prepare("SELECT * FROM users WHERE email = ? AND password = ?").get(email, password) as any;
+            console.log(`Checking local SQLite for user: ${lowerEmail}`);
+            // SQLite LIKE is case-insensitive by default for ASCII but ilike is not standard SQL.
+            const localUser = localDb.prepare("SELECT * FROM users WHERE LOWER(email) = ? AND password = ?").get(lowerEmail, password) as any;
             if (localUser) {
-              console.log("Local SQLite login success for:", email);
+              console.log(`Local SQLite login success for: ${email}`);
               loginSuccess = true;
               userEmail = localUser.email;
+            } else {
+              console.log(`No user found in local SQLite match for email: ${lowerEmail}`);
             }
           }
         }
