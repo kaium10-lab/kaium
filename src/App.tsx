@@ -276,12 +276,14 @@ export default function App() {
         <Cpu className="text-red-500 animate-pulse" size={32} />
       </div>
       <h1 className="text-2xl font-bold text-white mb-2">Backend Connection Issue</h1>
-      <p className="text-zinc-400 max-w-sm mb-4">
-        {fetchError ? `Error: ${fetchError}` : "Your portfolio cannot connect to the database or the server is not responding."}
-      </p>
-      <p className="text-zinc-600 text-xs mb-8">
-        HINT: Make sure 'npm run dev' is running in your terminal.
-      </p>
+      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 mb-6 w-full max-w-sm text-left font-mono text-[10px]">
+        <div className="text-emerald-500 mb-1">🔍 DIAGNOSTICS:</div>
+        <div className="text-zinc-500">Status: <span className="text-red-400">{fetchError ? 'Fetch Failed' : 'Timeout'}</span></div>
+        <div className="text-zinc-500">Error: <span className="text-zinc-300">{fetchError || 'Waiting for response...'}</span></div>
+        <div className="text-zinc-500 mt-2 text-zinc-600 font-sans border-t border-zinc-800 pt-2 italic">
+          Try running: <span className="text-zinc-400 not-italic">npm run dev</span> (NOT 'npx vite')
+        </div>
+      </div>
       <button 
         onClick={() => window.location.reload()}
         className="w-full max-w-xs py-3 bg-emerald-500 text-zinc-950 font-bold rounded-xl hover:bg-emerald-600 transition-all"

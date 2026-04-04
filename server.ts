@@ -222,6 +222,12 @@ app.set('trust proxy', true);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+// Add diagnostic header
+app.use((req, res, next) => {
+  res.setHeader('X-Server-Status', 'Express-Active');
+  next();
+});
+
 // Configure Multer for file uploads
 const uploadDir = process.env.VERCEL ? "/tmp" : path.join(__dirname, "uploads");
 if (!process.env.VERCEL && !fs.existsSync(uploadDir)) {
