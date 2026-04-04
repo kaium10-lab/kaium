@@ -668,6 +668,17 @@ app.get("/api/data", async (req, res) => {
   app.delete("/api/messages/:id", authenticate, async (req, res) => {
     const { id } = req.params;
     try {
+      // 🚀 Step 1: Delete from local SQLite (Immediate for performance)
+      if (localDb) {
+        try {
+          localDb.prepare("DELETE FROM messages WHERE id = ?").run(id);
+          console.log(`Message ${id} removed from local SQLite.`);
+        } catch (localErr) {
+          console.error("Failed to delete from local SQLite:", localErr);
+        }
+      }
+
+      // ☁️ Step 2: Delete from Supabase
       const { error } = await supabase
         .from('messages')
         .delete()

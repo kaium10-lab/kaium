@@ -1104,9 +1104,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, data, onSave, on
                       <div key={msg.id} className="p-6 bg-zinc-900 rounded-2xl border border-white/5 space-y-4 relative group">
                         <button 
                           onClick={() => deleteMessage(msg.id)}
-                          className="absolute top-4 right-4 p-2 text-zinc-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-4 right-4 p-2 text-zinc-600 hover:text-red-500 bg-zinc-950/50 rounded-lg border border-white/5 transition-colors"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={16} />
                         </button>
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                           <div>

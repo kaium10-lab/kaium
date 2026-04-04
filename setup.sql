@@ -49,6 +49,16 @@ CREATE POLICY "Allow public insert on messages"
 ON messages FOR INSERT 
 WITH CHECK (true);
 
+-- Allow SELECT so the API can read them (Admin Panel)
+CREATE POLICY "Allow select on messages" 
+ON messages FOR SELECT 
+USING (true);
+
+-- Allow DELETE (Admin Panel)
+CREATE POLICY "Allow delete on messages" 
+ON messages FOR DELETE 
+USING (true);
+
 -- 7. Seed Initial Admin User
 -- (Replace with your desired credentials if needed)
 INSERT INTO users (email, password) 
